@@ -218,6 +218,31 @@
 			<script src="https://www.gstatic.com/firebasejs/4.3.1/firebase-app.js"></script>
 			<script src="https://www.gstatic.com/firebasejs/4.3.1/firebase-messaging.js"></script>
 			<script>
+				// Initialize Firebase
+				var config = {
+					apiKey: "AIzaSyAFnR7PR0ZYynZVtZonUWBZ5pfA3bo5A7k",
+					authDomain: "calvin-and-maya.firebaseapp.com",
+					databaseURL: "https://calvin-and-maya.firebaseio.com",
+					projectId: "calvin-and-maya",
+					storageBucket: "calvin-and-maya.appspot.com",
+					messagingSenderId: "928507799872"
+				};
+				firebase.initializeApp(config);
+
+				if ('serviceWorker' in navigator) {
+					console.log("Begin fetch of service worker");
+					window.addEventListener('load', function() {
+					  navigator.serviceWorker.register('sw.js').then(function(registration) {
+						// Registration was successful
+						console.log('ServiceWorker registration successful with scope: ', registration.scope);
+					  }, function(err) {
+						// registration failed :(
+						console.log('ServiceWorker registration failed main: ', err);
+					  });
+					});
+				}
+	</script>
+			<script>
 				$(document).ready(function() {
 					console.log("rdy");
 					//$('#submitButton').click(function() {
