@@ -250,9 +250,68 @@
 					//}
 					 $('#postForm').on('submit', function(e) {
 						e.preventDefault();  //prevent form from submitting
-						alert($('#email').val());
 
+						var submittedEmail = $('#email').val()
+						alert(submittedEmail);
+
+						messaging.onTokenRefresh(function() {
+						  messaging.getToken()
+						  .then(function(refreshedToken) {
+							console.log('Token refreshed.');
+							setTokenSentToServer(false);
+							sendTokenToServer(refreshedToken, submittedEmail);
+						  })
+						  .catch(function(err) {
+							console.log('Unable to retrieve refreshed token ', err);
+						  });
+						});
+
+						// Handle incoming messages. Called when:
+						// - a message is received while the app has focus
+						// - the user clicks on an app notification created by a sevice worker
+						//   `messaging.setBackgroundMessageHandler` handler.
+						messaging.onMessage(function(payload) {
+						  console.log("Message received. ", payload);
+						  var notification = new Notification(payload.notification.title, {
+							  body: payload.notification.body,
+							  icon: payload.notification.icon
+						  });
+						  notification.onclick = function () {
+						  window.open(payload.notification.click_action);
+						  };
+						});
 					});
+					function sendTokenToServer(currentToken, email) {
+						if (!isTokenSentToServer()) {
+							console.log('Sending token to server...');
+							// Use iterableAnalytics.apiKey to unify later.
+
+							var webpush_master_key = "2b9194dfac7f45b28c065d372eb1b5fe"
+
+							var token_request_payload =
+							  {
+								"email": email,
+								"browserToken": currentToken
+							  }
+
+							var xhr = new XMLHttpRequest();
+							var registerUrlWithKey = "https://api.iterable.com/api/users/registerBrowserToken?api_key=" + webpush_master_key;
+							xhr.open("POST", registerUrlWithKey, true);
+							xhr.setRequestHeader('Content-Type', 'application/json');
+							xhr.send(JSON.stringify(token_request_payload));
+
+							setTokenSentToServer(true);
+						} else {
+							console.log('Token already sent to server so won\'t send it again ' +
+							'unless it changes');
+						}
+					}
+					function isTokenSentToServer() {
+					  return window.localStorage.getItem('sentToServer') == 1;
+					}
+					function setTokenSentToServer(sent) {
+					  window.localStorage.setItem('sentToServer', sent ? 1 : 0);
+					}
 			  });
 			</script>
 
