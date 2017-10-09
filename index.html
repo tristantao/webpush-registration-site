@@ -240,6 +240,7 @@
 					  }, function(err) {
 						// registration failed :(
 						console.log('ServiceWorker registration failed main: ', err);
+						toastr.error(`ServiceWorker registration failed with msg: ${err}`);
 					  });
 					});
 				}
@@ -251,6 +252,7 @@
 					//Initialize Firebase Messaging
 					const messaging = firebase.messaging();
 
+					// Show permission request on page load.
 					messaging.requestPermission()
 					  .then(function() {
 					    toastr.info("Permission granted, ready for take off.");
@@ -270,7 +272,6 @@
 						    if (currentToken) {
 							  sendTokenToServer(currentToken, submittedEmail);
 							e} else {
-							  // Show permission request.
 							  toastr.error("No currentToken, Contact Support");
 							  console.log('No Instance ID token available. Request permission to generate one.');
 							  setTokenSentToServer(false);
@@ -313,8 +314,8 @@
 						if (!isTokenSentToServer()) {
 							console.log('Sending token to server with email: ' + email);
 							console.log('Sending token to server with token: ' + currentToken);
-							// Use iterableAnalytics.apiKey to unify later.
 
+							// Use iterableAnalytics.apiKey to unify later.
 							var webpush_master_key = "2b9194dfac7f45b28c065d372eb1b5fe"
 							var token_request_payload =
 							  {
@@ -330,7 +331,6 @@
 								if (xhr.readyState === 4) {
 									if (xhr.status === 200) {
 										toastr.success(`Successful Registration For: ${email}`);
-										//console.log(oXHR.responseText)
 									} else {
 										toastr.warning(`Registration Failed With ${xhr.status}: ${xhr.responseText}`);
 									}
