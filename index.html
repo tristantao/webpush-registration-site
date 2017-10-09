@@ -17,13 +17,14 @@
 		<script src="assets/js/jquery.scrolly.min.js"></script>
 		<script src="assets/js/jquery.dropotron.min.js"></script>
 		<script src="assets/js/jquery.scrollex.min.js"></script>
+		<link rel="manifest" href="manifest.json">
 	</head>
 	<body class="landing">
 		<div id="page-wrapper">
 
 			<!-- Header -->
 				<header id="header">
-					<h1 id="logo"><a href="index.html">Landed</a></h1>
+					<h1 id="logo"><a href="index.html">Iterable</a></h1>
 					<nav id="nav">
 						<ul>
 							<li><a href="index.html">Home</a></li>
@@ -183,10 +184,10 @@
 							<h2>Magna faucibus lorem diam</h2>
 							<p>Ante metus praesent faucibus ante integer id accumsan eleifend</p>
 						</header>
-						<form method="post" action="#" class="container 50%">
+						<form id="postForm" method="post" action="#" class="container 50%">
 							<div class="row uniform 50%">
 								<div class="8u 12u$(xsmall)"><input type="email" name="email" id="email" placeholder="Your Email Address" /></div>
-								<div class="4u$ 12u$(xsmall)"><input id="submitButton" type="button" value="Get Started" class="fit special" /></div>
+								<div class="4u$ 12u$(xsmall)"><input id="submitButton" type="submit" value="Get Started" class="fit special" /></div>
 							</div>
 						</form>
 					</div>
@@ -215,19 +216,132 @@
 			<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
 			<script src="assets/js/main.js"></script>
 			<script src="https://www.gstatic.com/firebasejs/4.3.1/firebase-app.js"></script>
-            <script src="https://www.gstatic.com/firebasejs/4.3.1/firebase-messaging.js"></script>
+			<script src="https://www.gstatic.com/firebasejs/4.3.1/firebase-messaging.js"></script>
 			<script>
-		      $(document).ready(function() {
-		      		console.log("rdy");
-	    			$('#submitButton').click(function() {
+				// Initialize Firebase
+				var config = {
+					apiKey: "AIzaSyAFnR7PR0ZYynZVtZonUWBZ5pfA3bo5A7k",
+					authDomain: "calvin-and-maya.firebaseapp.com",
+					databaseURL: "https://calvin-and-maya.firebaseio.com",
+					projectId: "calvin-and-maya",
+					storageBucket: "calvin-and-maya.appspot.com",
+					messagingSenderId: "928507799872"
+				};
+				firebase.initializeApp(config);
 
-	      				alert($('#email').val());
-	    			});
+				if ('serviceWorker' in navigator) {
+					console.log("Begin fetch of service worker");
+					window.addEventListener('load', function() {
+					  navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function(registration) {
+						// Registration was successful
+						console.log('ServiceWorker registration successful with scope: ', registration.scope);
+					  }, function(err) {
+						// registration failed :(
+						console.log('ServiceWorker registration failed main: ', err);
+					  });
+					});
+				}
+			</script>
+			<script>
+				$(document).ready(function() {
+					console.log("rdy");
+					 $('#postForm').on('submit', function(e) {
+						e.preventDefault();  //prevent form from submitting
+
+						var submittedEmail = $('#email').val();
+						alert(submittedEmail);
+
+						const messaging = firebase.messaging();
+
+						// Get Permission
+						console.log('Requesting permission...');
+						messaging.requestPermission()
+						.then(function() {
+						  console.log('Notification permission granted.');
+
+						  // Retrieve an Instance ID token for use with FCM.
+						   messaging.getToken()
+							.then(function(currentToken) {
+							  if (currentToken) {
+								sendTokenToServer(currentToken, submittedEmail);
+							  } else {
+								// Show permission request.
+								console.log('No Instance ID token available. Request permission to generate one.');
+								updateUIForPushPermissionRequired(); // Show permission UI.
+								setTokenSentToServer(false);
+							  }
+							})
+							.catch(function(err) {
+							  console.log('An error occurred while retrieving token. ', err);
+							  setTokenSentToServer(false);
+							});
+						  })
+						.catch(function(err) {
+						  console.log('Unable to get permission to notify.', err);
+						});
+
+						messaging.onTokenRefresh(function() {
+						  messaging.getToken()
+						  .then(function(refreshedToken) {
+							console.log('Token refreshed.');
+							setTokenSentToServer(false);
+							log("email:" + submittedEmail);
+							sendTokenToServer(refreshedToken, submittedEmail);
+						  })
+						  .catch(function(err) {
+							console.log('Unable to retrieve refreshed token ', err);
+						  });
+						});
+
+						// Handle incoming messages. Called when:
+						// - a message is received while the app has focus
+						// - the user clicks on an app notification created by a sevice worker
+						//   `messaging.setBackgroundMessageHandler` handler.
+						messaging.onMessage(function(payload) {
+						  console.log("Message received. ", payload);
+						  var notification = new Notification(payload.notification.title, {
+							  body: payload.notification.body,
+							  icon: payload.notification.icon
+						  });
+						  notification.onclick = function () {
+						  window.open(payload.notification.click_action);
+						  };
+						});
+					});
+					function sendTokenToServer(currentToken, email) {
+						if (!isTokenSentToServer()) {
+							console.log('Sending token to server with email: ' + email);
+							console.log('Sending token to server with token: ' + currentToken);
+							// Use iterableAnalytics.apiKey to unify later.
+
+							var webpush_master_key = "2b9194dfac7f45b28c065d372eb1b5fe"
+							var token_request_payload =
+							  {
+								"email": email,
+								"browserToken": currentToken
+							  }
+							var xhr = new XMLHttpRequest();
+							var registerUrlWithKey = "https://api.iterable.com/api/users/registerBrowserToken?api_key=" + webpush_master_key;
+							xhr.open("POST", registerUrlWithKey, true);
+							xhr.setRequestHeader('Content-Type', 'application/json');
+							console.log("sending token" + JSON.stringify(token_request_payload));
+							xhr.send(JSON.stringify(token_request_payload));
+
+							setTokenSentToServer(true);
+						} else {
+							console.log('Token already sent to server so won\'t send it again ' +
+							'unless it changes');
+						}
+					}
+					function isTokenSentToServer() {
+						return false;
+					  //return window.localStorage.getItem('sentToServer') == 1;
+					}
+					function setTokenSentToServer(sent) {
+					  window.localStorage.setItem('sentToServer', sent ? 1 : 0);
+					}
 			  });
-			    function foo(){
-         			alert("foo!");
-       			} 
-       		</script>
+			</script>
 
 	</body>
 </html>
